@@ -49,6 +49,7 @@ class MotivoConsultaController extends Controller
             'antecedentes' => 'nullable|string',
             'fecha_siguiente_cita' => 'nullable|date|after_or_equal:today'
     ]);
+
         // Buscar el último signo vital del paciente
         $ultimoSigno = SignosVitales::where('id_paciente', $request->id_paciente)
             ->latest('created_at')
@@ -66,10 +67,19 @@ class MotivoConsultaController extends Controller
         if ($sala) {
             $sala->update(['status' => 'Receta']);
         }
+        // Guardar archivos si existen
+        if ($request->hasFile('archivos')) {
+            foreach ($request->file('archivos') as $archivo) {
+                $nombre = time().'_'.$archivo->getClientOriginalName();
+                $archivo->move(public_path('images'), $nombre);
+
+                $consulta->archivos()->create([
+                    'ruta' => 'images/'.$nombre
+                ]);
+            }
+        }
 
 
-
-        MotivoConsulta::create($request->all());
 
         return back()->with('success', 'Consulta registrada correctamente.');
     }

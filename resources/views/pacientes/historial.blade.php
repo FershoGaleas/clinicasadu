@@ -235,7 +235,7 @@
                         <thead class="table-dark">
                         <tr>
                             <th>Fecha</th>
-                            <th>Motivo</th>
+                            <th>Antecedentes</th>
                             <th>Diagnóstico</th>
                             <th>Tratamiento</th>
                             <th>Examenes</th>
@@ -248,7 +248,6 @@
                         @forelse($paciente->consultas as $consulta)
                             <tr>
                                 <td>{{ \Carbon\Carbon::parse($consulta->fecha_actual)->format('d/m/Y H:i') }}</td>
-
                                 <td>{{ $consulta->antecedentes }}</td>
                                 <td>{{ $consulta->diagnostico }}</td>
                                 <td>{{ $consulta->tratamiento }}</td>
@@ -257,9 +256,15 @@
                                 <td>{{ $consulta->fecha_siguiente_cita ? \Carbon\Carbon::parse($consulta->fecha_siguiente_cita)->format('d/m/Y') : 'Sin cita' }}</td>
                                 <td class="text-center">
                                     <div class="d-flex flex-column flex-md-row justify-content-center gap-2">
+                                        <!-- Botón para abrir el modal de archivos -->
+                                        <button type="button" class="btn btn-sm btn-info w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#modalArchivos{{ $consulta->id_consulta }}">
+                                            <i class="bi bi-images"></i> Archivos
+                                        </button>
+
                                         <a href="{{ route('consultas.edit', $consulta->id_consulta) }}" class="btn btn-sm btn-warning w-100 w-md-auto">
                                             <i class="bi bi-pencil-square"></i> Ver
                                         </a>
+
                                         <form action="{{ route('consultas.destroy', $consulta->id_consulta) }}" method="POST" class="w-100 w-md-auto">
                                             @csrf
                                             @method('DELETE')
@@ -267,14 +272,54 @@
                                                 <i class="bi bi-trash"></i> Eliminar
                                             </button>
                                         </form>
-                                        <a href="{{ route('pacientes.reporte', $consulta->id_consulta) }}"
-                                           class="btn btn-sm btn-success w-100 w-md-auto" target="_blank">
+
+                                        <a href="{{ route('pacientes.reporte', $consulta->id_consulta) }}" class="btn btn-sm btn-success w-100 w-md-auto" target="_blank">
                                             <i class="bi bi-file-earmark-pdf"></i> Reporte
                                         </a>
-
                                     </div>
                                 </td>
                             </tr>
+
+                            <!-- Modal único para esta consulta -->
+                            <div class="modal fade" id="modalArchivos{{ $consulta->id_consulta }}" tabindex="-1" aria-labelledby="modalArchivosLabel{{ $consulta->id_consulta }}" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="modalArchivosLabel{{ $consulta->id_consulta }}">Archivos de la consulta #{{ $consulta->id_consulta }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            @if($consulta->archivos->count() > 0)
+                                                <div id="carousel{{ $consulta->id_consulta }}" class="carousel slide" data-bs-ride="carousel">
+                                                    <div class="carousel-inner">
+                                                        @foreach($consulta->archivos as $index => $archivo)
+                                                            <div class="carousel-item {{ $index == 0 ? 'active' : '' }}">
+                                                                @if(Str::endsWith($archivo->ruta, ['.jpg','.jpeg','.png']))
+                                                                    <img src="{{ asset($archivo->ruta) }}" class="d-block w-100" alt="Archivo {{ $index+1 }}">
+                                                                @else
+                                                                    <div class="text-center p-5">
+                                                                        <a href="{{ asset($archivo->ruta) }}" target="_blank" class="btn btn-outline-info">
+                                                                            Descargar archivo {{ $index+1 }}
+                                                                        </a>
+                                                                    </div>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                    <button class="carousel-control-prev" type="button" data-bs-target="#carousel{{ $consulta->id_consulta }}" data-bs-slide="prev">
+                                                        <span class="carousel-control-prev-icon"></span>
+                                                    </button>
+                                                    <button class="carousel-control-next" type="button" data-bs-target="#carousel{{ $consulta->id_consulta }}" data-bs-slide="next">
+                                                        <span class="carousel-control-next-icon"></span>
+                                                    </button>
+                                                </div>
+                                            @else
+                                                <p class="text-muted">No hay archivos asociados a esta consulta.</p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         @empty
                             <tr>
                                 <td colspan="8" class="text-center">No hay consultas registradas.</td>
@@ -286,13 +331,12 @@
             </div>
         </div>
     </div>
-
     <div class="container-fluid mt-5">
         <div class="row justify-content-center">
             <div class="col-12 col-md-10">
                 <hr>
                 <h4>Agregar nueva consulta</h4>
-                <form action="{{ route('consultas.store') }}" method="POST">
+                <form action="{{ route('consultas.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <input type="hidden" name="id_signos_vitales" value="{{ $signos?->id_signos_vitales }}">
                     <input type="hidden" name="id_paciente" value="{{ $paciente->id_paciente }}">
@@ -302,8 +346,13 @@
                     <textarea name="historia_enfermedad_Actual" class="form-control mb-2" placeholder="HEA..."></textarea>
                     <textarea name="diagnostico" class="form-control mb-2" placeholder="Diagnóstico..."></textarea>
                     <textarea name="tratamiento" class="form-control mb-2" placeholder="Tratamiento..."></textarea>
-                    <textarea name="antecedentes" class="form-control mb-2" placeholder="Antecedentes..."></textarea>
                     <textarea name="examenes" class="form-control mb-2" placeholder="Exámenes..."></textarea>
+                    <div class="mb-3">
+                        <div id="fileInputs">
+                            <input type="file" name="archivos[]" class="form-control mb-2">
+                        </div>
+                        <button type="button" class="btn btn-success" onclick="addFileInput()">Cargar Otra Imagen</button>
+                    </div>
 
                     <div class="mb-3">
                         <label for="fecha_siguiente_cita" class="form-label">Fecha Próxima Cita</label>
@@ -324,6 +373,15 @@
     </div>
 </x-app-layout>
 <script>
+    function addFileInput() {
+        const div = document.getElementById('fileInputs');
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.name = 'archivos[]';
+        input.classList.add('form-control','mb-2');
+        div.appendChild(input);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const pesoInput = document.getElementById('peso');
         const alturaInput = document.getElementById('altura');

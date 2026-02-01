@@ -8,8 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class MotivoConsulta extends Model
 {
     protected $primaryKey = 'id_consulta';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    public $incrementing = true;
+    protected $keyType = 'int';
+
 
     use HasFactory;
     protected $fillable = [
@@ -36,6 +37,12 @@ class MotivoConsulta extends Model
     {
         return $this->belongsTo(SignosVitales::class, 'id_signos_vitales', 'id_signos_vitales');
     }
+    public function archivos()
+    {
+        return $this->hasMany(Archivos::class, 'id_consulta', 'id_consulta');
+
+    }
+
 
 
 }
